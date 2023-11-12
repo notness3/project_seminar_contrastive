@@ -14,7 +14,7 @@ class ImageEmbedder(nn.Module):
 
         self.base_model = torch.load(model_path, map_location=torch.device(device))
 
-        self.internal_embedding_size = self.base_model.classifier.in_features
+        self.internal_embedding_size = self.base_model.classifier[0].in_features
         self.base_model.classifier = nn.Linear(in_features=self.internal_embedding_size, out_features=embedding_size)
 
         if freeze:
@@ -37,5 +37,5 @@ class ImageEmbedder(nn.Module):
 
 
 if __name__ == '__main__':
-    model = ImageEmbedder('/Users/notness/contrastive_visual_embed/model/enet_b2_7.pt')
+    model = ImageEmbedder('/Users/notness/contrastive_visual_embed/model/enet_b0_8_best_vgaf.pt')
 

@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument('--val-dataset-dir', default='/Users/notness/contrastive_visual_embed/dataset/val')
     parser.add_argument('--test-dataset-dir', default='/Users/notness/contrastive_visual_embed/dataset/test')
     parser.add_argument('--checkpoint-dir', default='/Users/notness/contrastive_visual_embed/experiments', help='Checkpoint directory')
-    parser.add_argument('--model-path', default='/Users/notness/contrastive_visual_embed/model/enet_b2_7.pt',
+    parser.add_argument('--model-path', default='/Users/notness/contrastive_visual_embed/model/enet_b0_8_best_vgaf.pt',
                         help='Model directory')
     parser.add_argument('--model-class', default='ImageEmbedder', help='')
 
