@@ -27,7 +27,7 @@ class EmotionsDataset(Dataset):
 
     def _load_list(self, list_root):
         samples, sample_names, sample_labels, frame_nums = list(), list(), list(), list()
-        files_list = os.listdir(list_root)[:10]
+        files_list = os.listdir(list_root)
 
         for file in tqdm(files_list):
             if file.endswith('.jpeg'):
@@ -45,6 +45,7 @@ class EmotionsDataset(Dataset):
 
     def _load_samples_with_labels(self, path):
         image = cv2.imread(path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         name, class_label, frame_num = path.split('/')[-1].replace('.jpeg', '').split('_')
 

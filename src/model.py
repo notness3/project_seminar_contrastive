@@ -36,7 +36,7 @@ class ImageEmbedder(nn.Module):
     @torch.no_grad()
     def get_embeddings(self, image):
 
-        out = self.base_model.forward_head(image)
+        out = self.base_model.forward(image)
 
         if self.normalize:
             out = F.normalize(out, dim=-1)
