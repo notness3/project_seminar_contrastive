@@ -1,3 +1,4 @@
+import pandas as pd
 from torch.utils.data import Dataset
 
 import os
@@ -8,127 +9,73 @@ from torchvision import transforms
 
 
 class EmotionsDataset(Dataset):
-    def __init__(self, dataset_dir: str, interval: int = 4, img_size=(224, 224), mode='afew'):
+    def __init__(self, dataset_dir: str, img_size=(224, 224), emb_mode=False, model=None):
         super(EmotionsDataset, self).__init__()
 
         self.dataset_root = dataset_dir
-        self.interval = interval
         self.transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Resize(size=img_size),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
-        self.mode = mode
+        self.emb_mode = emb_mode
+        self.model = model
+        self.embeddings = list()
 
-        self.samples, self.sample_labels = self._load_list(self.dataset_root)
+        self.images, self.names, self.labels, self.sample_nums = self._load_list(self.dataset_root)
+        self.classes = {'Neutral': 0, 'Anger': 1, 'Disgust': 2, 'Fear': 3, 'Happiness': 4, 'Sadness': 5, 'Surprise': 6, 'Other': 7}
 
-        self.classes = None
-# TODO: normal class map
-# TODO: think about similar classes
     def _load_list(self, list_root):
-        samples, sample_labels = list(), list()
+        samples, sample_names, sample_labels, frame_nums = list(), list(), list(), list()
         files_list = os.listdir(list_root)[:10]
 
-        if self.mode == 'abaw':
-            for file in tqdm(files_list):
-                if file.endswith('.mp4'):
-                    # path, frame, label
-                    path = os.path.join(list_root, file)
-                    if file.replace('.mp4', '.txt') in os.listdir(f'{self.dataset_root}_txt'):
-                        label_list = self._read_annotations(file)
+        for file in tqdm(files_list):
+            if file.endswith('.jpeg'):
+                # path, frame, label
+                path = os.path.join(list_root, file)
 
-                        sample_list, sample_classes = self._load_samples_with_labels(path, label_list)
+                sample, name, label, frame_num = self._load_samples_with_labels(path)
 
-                        samples.extend(sample_list)
-                        sample_labels.extend(sample_classes)
-        else:
-            self.classes = {label: idx for idx, label in enumerate(files_list)}
+                samples.append(sample)
+                sample_names.append(name)
+                sample_labels.append(label)
+                frame_nums.append(frame_num)
 
-            for class_name in tqdm(files_list):
-                path_to_class = os.path.join(list_root, class_name)
-                class_files_list = os.listdir(path_to_class)[:10]
+        return samples, sample_names, sample_labels, frame_nums
 
-                for file in tqdm(class_files_list):
-                    if file.endswith('avi'):
-                        # path, frame, label
-                        path = os.path.join(path_to_class, file)
+    def _load_samples_with_labels(self, path):
+        image = cv2.imread(path)
 
-                        sample_list = self._load_samples(path)
-                        sample_classes = [self.classes[class_name] for _ in sample_list]
+        name, class_label, frame_num = path.split('/')[-1].replace('.jpeg', '').split('_')
 
-                        samples.extend(sample_list)
-                        sample_labels.extend(sample_classes)
+        if self.transform is not None:
+            image = self.transform(image)
 
-        return samples, sample_labels
+        if self.emb_mode:
+            emb = self.model.get_embeddings(image.unsqueeze(0))
 
-    def _read_annotations(self, filename):
-        name = filename.split('.')[0]
-        path = os.path.join(f'{self.dataset_root}_txt', f'{name}.txt')
+            self.embeddings.append(emb[0])
 
-        labels = [line.strip() for line in open(path, 'r')]
-        self.classes = {label: idx for idx, label in enumerate(labels[0].split(','))}
+        return image, name, class_label, frame_num
 
-        frame_labels = [int(lab) for lab in labels[1:]]
-
-        return frame_labels
-
-    def _load_samples_with_labels(self, path, list_labels):
-        capture = cv2.VideoCapture(path)
-        samples, sample_classes = list(), list()
-
-        frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
-
-        for i in range(0, frame_count, self.interval):
-            capture.set(cv2.CAP_PROP_POS_FRAMES, i)
-            ret, frame = capture.read()
-
-            if not ret:
-                break
-
-            if self.transform is not None:
-                frame = self.transform(frame)
-
-            class_label = list_labels[i]
-
-            if class_label != -1:
-                samples.append(frame)
-                sample_classes.append(class_label)
-
-        capture.release()
-
-        return samples, sample_classes
-
-    def _load_samples(self, path):
-        capture = cv2.VideoCapture(path)
-        samples = list()
-
-        frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
-
-        for i in range(0, frame_count, self.interval):
-            capture.set(cv2.CAP_PROP_POS_FRAMES, i)
-            ret, frame = capture.read()
-
-            if not ret:
-                break
-
-            if self.transform is not None:
-                frame = self.transform(frame)
-
-            samples.append(frame)
-
-        capture.release()
-
-        return samples
+    def extract_embeddings(self, model):
+        print(f'Extracting embeddings')
+        self.embeddings = model.get_embeddings(self.images)
 
     def __len__(self):
-        return len(self.samples)
+        return len(self.images)
 
     def __getitem__(self, idx):
+        if self.emb_mode:
+            self.embeddings[idx], int(self.labels[idx]), self.names[idx], int(self.sample_nums[idx])
 
-        return self.samples[idx], int(self.sample_labels[idx])
+        return self.images[idx], int(self.labels[idx]), self.names[idx], int(self.sample_nums[idx])
 
 
 if __name__ == '__main__':
-    train = EmotionsDataset('/Users/notness/contrastive_visual_embed/dataset/test')
+    from src.model import ImageEmbedder
 
-    print(train[1])
+    model = ImageEmbedder('/Users/notness/contrastive_visual_embed/model/enet_b0_8_best_vgaf.pt')
+    eval = EmotionsDataset('/Users/notness/contrastive_visual_embed/dataset/val_prepare', emb_mode=True, model=model)
+
+    pd.DataFrame({'label': eval.labels, 'video_name': eval.names, 'embeddings': eval.embeddings}).to_parquet('eval_1.parquet')

@@ -2,6 +2,7 @@ import os
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class ImageEmbedder(nn.Module):
@@ -9,13 +10,15 @@ class ImageEmbedder(nn.Module):
                  model_path: str,
                  embedding_size: int = 512,
                  freeze: bool = False,
-                 device: str = 'cpu'):
+                 device: str = 'cpu',
+                 normalize: bool = True):
         super().__init__()
 
         self.base_model = torch.load(model_path, map_location=torch.device(device))
 
         self.internal_embedding_size = self.base_model.classifier[0].in_features
-        self.base_model.classifier = nn.Linear(in_features=self.internal_embedding_size, out_features=embedding_size)
+        self.base_model.classifier = nn.Identity()#nn.Linear(in_features=self.internal_embedding_size, out_features=embedding_size)
+        self.normalize = normalize
 
         if freeze:
             for param in self.base_model.parameters():
@@ -30,12 +33,25 @@ class ImageEmbedder(nn.Module):
     def save(self, model_path):
         torch.save(self.base_model.state_dict(), os.path.join(model_path, 'model.pth'))
 
+    @torch.no_grad()
+    def get_embeddings(self, image):
+
+        out = self.base_model.forward_head(image)
+
+        if self.normalize:
+            out = F.normalize(out, dim=-1)
+
+        return out.cpu().numpy()
+
     def forward(self, x):
         embedding = self.embed_image(x)
+
+        if self.normalize:
+            embedding = F.normalize(embedding, dim=-1)
 
         return embedding
 
 
 if __name__ == '__main__':
     model = ImageEmbedder('/Users/notness/contrastive_visual_embed/model/enet_b0_8_best_vgaf.pt')
-
+    print(model)

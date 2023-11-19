@@ -38,3 +38,14 @@ def collate_fn(batch):
 
     return [img, target]
 
+
+def cosine_similarity(emb1: np.ndarray, emb2: np.array) -> np.ndarray:
+    """
+    Batched cosine similarity for normalized vectors.
+    :param emb1: (n, dim)
+    :param emb2: (n, dim)
+    :return: (n)
+    """
+
+    return np.sum(emb1 * emb2, axis=1)
+
