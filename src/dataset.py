@@ -29,7 +29,7 @@ class EmotionsDataset(Dataset):
 
     def _load_list(self, list_root):
         samples, sample_names, sample_labels, frame_nums = list(), list(), list(), list()
-        files_list = os.listdir(list_root)[:100]
+        files_list = os.listdir(list_root)
 
         for file in tqdm(files_list):
             if file.endswith('.jpeg'):
