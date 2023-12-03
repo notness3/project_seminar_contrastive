@@ -33,10 +33,12 @@ def parce_dataset(source_path: str, dest_path: str, val_size: float = 0.2) -> No
 
 
 def collate_fn(batch):
-    img = torch.stack(list(map(lambda x: x[0], batch)))
-    target = torch.tensor(list(map(lambda x: x[1], batch)))
+    anchor = torch.stack(list(map(lambda x: x[0], batch)))
+    positive = torch.stack(list(map(lambda x: x[1], batch)))
+    negative = torch.stack(list(map(lambda x: x[2], batch)))
+    target = torch.tensor(list(map(lambda x: x[3], batch)))
 
-    return [img, target]
+    return [anchor, positive, negative, target]
 
 
 def cosine_similarity(emb1: np.ndarray, emb2: np.array) -> np.ndarray:

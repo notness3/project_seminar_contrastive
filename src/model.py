@@ -11,13 +11,14 @@ class ImageEmbedder(nn.Module):
                  embedding_size: int = 512,
                  freeze: bool = False,
                  device: str = 'cpu',
-                 normalize: bool = True):
+                 normalize: bool = True,
+                 test_baseline: bool = False):
         super().__init__()
 
         self.base_model = torch.load(model_path, map_location=torch.device(device))
 
         self.internal_embedding_size = self.base_model.classifier[0].in_features
-        self.base_model.classifier = nn.Identity()#nn.Linear(in_features=self.internal_embedding_size, out_features=embedding_size)
+        self.base_model.classifier = nn.Identity() if test_baseline else nn.Linear(in_features=self.internal_embedding_size, out_features=embedding_size)
         self.normalize = normalize
 
         if freeze:

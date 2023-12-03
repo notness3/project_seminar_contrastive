@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from src.dataset import EmotionsDataset
 # must be here
 from src.model import ImageEmbedder
-from src.loss import ArcFaceLoss
+from src.loss import ArcFaceLoss, TripletLoss
 from src.trainer import EmotionsTrainer
 from src.utils import collate_fn, set_all_seeds
 
@@ -18,8 +18,8 @@ warnings.filterwarnings("ignore")
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--dataset-dir', default='/Users/notness/contrastive_visual_embed/dataset/train')
-    parser.add_argument('--val-dataset-dir', default='/Users/notness/contrastive_visual_embed/dataset/val')
+    parser.add_argument('--dataset-dir', default='/Users/notness/contrastive_visual_embed/dataset/train1_prepare')
+    parser.add_argument('--val-dataset-dir', default='/Users/notness/contrastive_visual_embed/dataset/val_prepare')
     parser.add_argument('--test-dataset-dir', default='/Users/notness/contrastive_visual_embed/dataset/test')
     parser.add_argument('--checkpoint-dir', default='/Users/notness/contrastive_visual_embed/experiments', help='Checkpoint directory')
     parser.add_argument('--model-path', default='/Users/notness/contrastive_visual_embed/model/enet_b0_8_best_vgaf.pt',
@@ -35,7 +35,7 @@ def parse_args():
     parser.add_argument('--threshold_chooser', type=str, default='accuracy',
                         help='Could be either max_f1, eer, accuracy')
 
-    parser.add_argument('--loss', type=str, default='ArcFaceLoss', help='Could be either AddMarLoss or AddMarScaleLoss')
+    parser.add_argument('--loss', type=str, default='TripletLoss', help='Could be either ArcFaceLoss or TripletLoss')
 
     parser.add_argument('--seed', type=int, default=1004, help='Random seed value')
     parser.add_argument('--checkpoint-iter', type=int, default=5000, help='Eval and checkpoint frequency.')

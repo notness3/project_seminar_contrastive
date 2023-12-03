@@ -5,11 +5,6 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 
-from src.evaluation import (compute_eer,
-                            compute_max_f1,
-                            get_metrics,
-                            plot_precision_recall_curve)
-
 
 class EmotionsTrainer:
     def __init__(
@@ -45,15 +40,16 @@ class EmotionsTrainer:
 
         epoch_loss = 0
         with tqdm(total=len(self.train_dataloader)) as pbar:
-            for i, (img, target) in enumerate(self.train_dataloader):
-                img = img.to(self.device)
-                target = target.to(self.device)
+            for i, (anchor, positive, negative, class_label) in enumerate(self.train_dataloader):
+                anchor = anchor.to(self.device)
+                positive = positive.to(self.device)
+                negative = negative.to(self.device)
 
-                embeddings = self.model(img)
+                anchor_emb = self.model(anchor)
+                positive_emb = self.model(positive)
+                negative_emb = self.model(negative)
 
-                loss = self.loss(embeddings, target).sum()
-
-                epoch_loss += loss.item()
+                loss = self.loss(anchor_emb, positive_emb, negative_emb).sum()
 
                 loss.backward(loss)
                 self._optimizer_step()
@@ -68,46 +64,20 @@ class EmotionsTrainer:
         self.model.eval()
 
         val_loss = 0
-        for i, (img, target) in enumerate(self.dev_dataloader):
-            img = img.to(self.device)
-            target = target.to(self.device)
+        for i, (anchor, positive, negative, class_label) in enumerate(self.dev_dataloader):
+            anchor = anchor.to(self.device)
+            positive = positive.to(self.device)
+            negative = negative.to(self.device)
 
-            embeddings = self.model(img)
+            anchor_emb = self.model(anchor)
+            positive_emb = self.model(positive)
+            negative_emb = self.model(negative)
 
-            loss = self.loss(embeddings, target).sum()
+            loss = self.loss(anchor_emb, positive_emb, negative_emb).sum()
 
             val_loss += loss.item()
 
         return val_loss / len(self.dev_dataloader)
-
-    # @torch.inference_mode()
-    # def eval(self):
-    #     self.model.eval()
-    #
-    #     y_true, y_pred, y_score = list(), list(), list()
-    #
-    #     for i, (img, target) in enumerate(self.test_dataloader):
-    #         img = img.to(self.device)
-    #         target = target.to(self.device)
-    #
-    #         embeddings = self.model(img)
-    #
-    #         pred = F.softmax(logits)
-    #         labels = torch.argmax(pred, dim=1)
-    #
-    #         y_true.extend(target.cpu().tolist())
-    #         y_pred.extend(labels.cpu().tolist())
-    #         y_score.extend(pred[:, 0].cpu().tolist())
-    #
-    #     plot_precision_recall_curve(y_true, y_score, os.path.join(self.experiment_dir, 'pr_curve.png'))
-    #
-    #     fpr, fnr, eer_thresh = compute_eer(y_true, y_score)
-    #     print(f'FPR={fpr}, FNR={fnr}, EER_Threshold={eer_thresh}')
-    #     max_f1, prec, rec, f1_thresh = compute_max_f1(y_true, y_score)
-    #     print(f'MAX F1={max_f1}, Precision={fnr}, Recall={rec}, F1_Threshold={f1_thresh}')
-    #
-    #     accuracy, precision, recall, f1 = get_metrics(y_true, y_pred)
-    #     print(f'Accuracy={accuracy}, Precision={precision}, Recall={recall}, F1={f1}')
 
     def train(self, num_epochs):
         best_val_loss = float('inf')

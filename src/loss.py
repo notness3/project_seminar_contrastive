@@ -12,7 +12,8 @@ class ArcFaceLoss(nn.Module):
                  device: str = 'cuda',
                  s: float = 64.0,
                  m: float = 0.5,
-                 eps: float = 1e-6
+                 eps: float = 1e-6,
+                 **kwargs
                  ):
         super(ArcFaceLoss, self).__init__()
 
@@ -48,3 +49,21 @@ class ArcFaceLoss(nn.Module):
         logits *= self.s
 
         return logits
+
+
+class TripletLoss(nn.Module):
+    def __init__(self, margin=1.0, **kwargs):
+        super(TripletLoss, self).__init__()
+        self.margin = margin
+
+    @staticmethod
+    def calc_euclidean(x1, x2):
+        return (x1 - x2).pow(2).sum(1)
+
+    def forward(self, anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor) -> torch.Tensor:
+        distance_positive = self.calc_euclidean(anchor, positive)
+        distance_negative = self.calc_euclidean(anchor, negative)
+        losses = torch.relu(distance_positive - distance_negative + self.margin)
+
+        return losses.mean()
+

@@ -1,3 +1,4 @@
+import random
 import pandas as pd
 from torch.utils.data import Dataset
 
@@ -9,7 +10,7 @@ from torchvision import transforms
 
 
 class EmotionsDataset(Dataset):
-    def __init__(self, dataset_dir: str, img_size=(224, 224), emb_mode=False, model=None):
+    def __init__(self, dataset_dir: str, img_size=(224, 224), emb_mode=False, model=None, sample_mode='triplet'):
         super(EmotionsDataset, self).__init__()
 
         self.dataset_root = dataset_dir
@@ -21,13 +22,14 @@ class EmotionsDataset(Dataset):
         self.emb_mode = emb_mode
         self.model = model
         self.embeddings = list()
+        self.sample_mode = sample_mode
 
         self.images, self.names, self.labels, self.sample_nums = self._load_list(self.dataset_root)
         self.classes = {'Neutral': 0, 'Anger': 1, 'Disgust': 2, 'Fear': 3, 'Happiness': 4, 'Sadness': 5, 'Surprise': 6, 'Other': 7}
 
     def _load_list(self, list_root):
         samples, sample_names, sample_labels, frame_nums = list(), list(), list(), list()
-        files_list = os.listdir(list_root)
+        files_list = os.listdir(list_root)[:100]
 
         for file in tqdm(files_list):
             if file.endswith('.jpeg'):
@@ -68,15 +70,32 @@ class EmotionsDataset(Dataset):
 
     def __getitem__(self, idx):
         if self.emb_mode:
-            self.embeddings[idx], int(self.labels[idx]), self.names[idx], int(self.sample_nums[idx])
+            return self.embeddings[idx], int(self.labels[idx]), self.names[idx], int(self.sample_nums[idx])
+
+        if self.sample_mode == 'triplet':
+            anchor, anchor_label, anchor_name = self.images[idx], int(self.labels[idx]), self.names[idx]
+
+            positive_list = [self.images[i] for i in range(len(self.images)) if
+                             i != idx and int(self.labels[i]) == anchor_label]
+            negative_list = [self.images[i] for i in range(len(self.images)) if
+                             self.names[i] != anchor_name and int(self.labels[i]) != anchor_label]
+
+            positive = random.choice(positive_list)
+            negative = random.choice(negative_list)
+
+            return anchor, positive, negative, anchor_label
 
         return self.images[idx], int(self.labels[idx]), self.names[idx], int(self.sample_nums[idx])
 
 
 if __name__ == '__main__':
-    from src.model import ImageEmbedder
+    # from src.model import ImageEmbedder
+    #
+    # model = ImageEmbedder('/Users/notness/contrastive_visual_embed/model/enet_b0_8_best_vgaf.pt')
+    # eval = EmotionsDataset('/Users/notness/contrastive_visual_embed/dataset/val_prepare', emb_mode=True, model=model)
+    #
+    # pd.DataFrame({'label': eval.labels, 'video_name': eval.names, 'embeddings': eval.embeddings}).to_parquet('eval_1.parquet')
 
-    model = ImageEmbedder('/Users/notness/contrastive_visual_embed/model/enet_b0_8_best_vgaf.pt')
-    eval = EmotionsDataset('/Users/notness/contrastive_visual_embed/dataset/val_prepare', emb_mode=True, model=model)
+    dataset = EmotionsDataset('/Users/notness/contrastive_visual_embed/dataset/val_prepare')
 
-    pd.DataFrame({'label': eval.labels, 'video_name': eval.names, 'embeddings': eval.embeddings}).to_parquet('eval_1.parquet')
+    print(dataset[0])
