@@ -62,6 +62,53 @@ $$cosine\ similarity_{одинаковые\ эмоции}≥cosine\ similarity_{
 Демонстрационный интерфейс для визуальной проверки работы модели
 
 
+## 3. Запуск обучения
+
+### Способ 1: Обучение в ноутбуке
+1. Предварительно установить необходимое окружение:
+
+```
+pip install requirements.txt
+```
+
+2. Запустить jupyter или jupyter lab. Для обучения использовать `notebooks/train.ipynb`, для оценки `notebooks/evaluation.ipynb`
+
+### Способ 2: Обучение через скрипты
+
+
+1. Предварительно установить необходимое окружение:
+
+```
+pip install requirements.txt
+```
+
+2. Запустить обучение с помощью команды:
+
+```
+python main.py
+```
+3. Передавать настройки обучения либо через консоль, либо меняя аргументы в файле `main.py`:
+
+```python
+parser.add_argument('--dataset-dir', default='/content/dataset/train')
+parser.add_argument('--val-dataset-dir', default='/content/dataset/val')
+parser.add_argument('--test-dataset-dir', default='/content/dataset/test')
+parser.add_argument('--checkpoint-dir', default='/content/drive/experiments', help='Checkpoint directory')
+parser.add_argument('--model-path', default='/content/drive/enet_b0_8_best_vgaf.pt',
+                    help='Model directory')
+parser.add_argument('--model-class', default='ImageEmbedder', help='')
+
+parser.add_argument('--epochs', type=int, default=5, help='Number of epochs for training')
+parser.add_argument('--batch-size', type=int, default=8, help='Number of examples for each iteration')
+parser.add_argument('--learning-rate', type=float, default=1e-4, help='Learning rate')
+parser.add_argument('--optim-betas', type=list, nargs='+', default=[0.9, 0.999], help='Optimizer betas')
+parser.add_argument('--weight-decay', type=float, default=0.01, help='Optimizer weight decay')
+
+parser.add_argument('--loss', type=str, default='TripletLoss', help='Could be one of ArcFaceLoss, TripletLoss, ContrastiveCrossEntropy')
+
+parser.add_argument('--seed', type=int, default=1004, help='Random seed value')
+parser.add_argument('--device', default='cuda', help='Device to use for training: cpu or cuda')
+```
 
 
 
