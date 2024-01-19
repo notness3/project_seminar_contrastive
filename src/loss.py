@@ -3,6 +3,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import wandb
 
 
 class ArcFaceLoss(nn.Module):
@@ -57,13 +58,64 @@ class TripletLoss(nn.Module):
         self.margin = margin
 
     @staticmethod
-    def calc_euclidean(x1, x2):
-        return (x1 - x2).pow(2).sum(1)
+    def calc_distance(x1, x2):
+        x1 = F.normalize(x1, dim=1)
+        x2 = F.normalize(x2, dim=1)
 
-    def forward(self, anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor) -> torch.Tensor:
-        distance_positive = self.calc_euclidean(anchor, positive)
-        distance_negative = self.calc_euclidean(anchor, negative)
+        cos_sim = (x1 * x2).sum(dim=1)
+
+        return 1 - cos_sim
+
+
+    @torch.no_grad()
+    def log_stuff(self, pos_scores, neg_scores, prefix):
+        pos_mean = pos_scores.mean().item()
+        neg_mean = neg_scores.mean().item()
+        difference = pos_mean - neg_mean
+
+        wandb.log({
+            f"{prefix}_pos_mean": pos_mean,
+            f"{prefix}_neg_mean": neg_mean,
+            f"{prefix}_difference": difference
+        })
+
+    def forward(self, anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, prefix: str) -> torch.Tensor:
+        distance_positive = self.calc_distance(anchor, positive)
+        distance_negative = self.calc_distance(anchor, negative)
+
+        self.log_stuff(distance_positive, distance_negative, prefix)
+
         losses = torch.relu(distance_positive - distance_negative + self.margin)
 
         return losses.mean()
 
+
+class ContrastiveCrossEntropy(nn.Module):
+    def __init__(self, margin=1.0, **kwargs):
+        super().__init__()
+        self.margin = margin
+
+    @torch.no_grad()
+    def log_stuff(self, pos_scores, neg_scores, prefix):
+        pos_mean = pos_scores.mean().item()
+        neg_mean = neg_scores.mean().item()
+        difference = pos_mean - neg_mean
+
+        wandb.log({
+            f"{prefix}_pos_mean": pos_mean,
+            f"{prefix}_neg_mean": neg_mean,
+            f"{prefix}_difference": difference
+        })
+
+    def forward(self, vac_emb: torch.Tensor, pos_emb: torch.Tensor, neg_emb: torch.Tensor, prefix: str) -> torch.Tensor:
+        pos_scores = (vac_emb * pos_emb).sum(dim=1)
+        neg_scores = (vac_emb * neg_emb).sum(dim=1)
+
+        self.log_stuff(pos_scores, neg_scores, prefix)
+
+        loss_val = torch.exp(neg_scores + self.margin) - pos_scores
+
+        # loss_val = torch.clamp(loss_val, min=1.001, max=2**16)
+        loss_val[loss_val < 1] = 1
+
+        return loss_val.log().mean()

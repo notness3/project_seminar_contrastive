@@ -3,3 +3,6 @@ torch==2.0.1
 torchvision==0.15.2
 scikit-learn==1.1.2
 opencv-python==4.6.0.66
+umap-learn==0.5.5
+timm==0.9.10
+wandb==0.15.3

@@ -11,20 +11,22 @@ class ImageEmbedder(nn.Module):
                  embedding_size: int = 512,
                  freeze: bool = False,
                  device: str = 'cpu',
-                 normalize: bool = True,
-                 test_baseline: bool = False):
+                 normalize: bool = False):
         super().__init__()
 
         self.base_model = torch.load(model_path, map_location=torch.device(device))
 
         self.internal_embedding_size = self.base_model.classifier[0].in_features
-        self.base_model.classifier = nn.Identity() if test_baseline else nn.Linear(in_features=self.internal_embedding_size, out_features=embedding_size)
+        self.base_model.classifier = nn.Linear(in_features=self.internal_embedding_size, out_features=embedding_size)
         self.normalize = normalize
 
         if freeze:
             for param in self.base_model.parameters():
                 param.requires_grad = False
-            self.base_model.classifier.requires_grad_(True)
+        else:
+            for param in self.base_model.parameters():
+                param.requires_grad = True
+        self.base_model.classifier.requires_grad_(True)
 
         self.base_model.to(device)
 
@@ -40,7 +42,7 @@ class ImageEmbedder(nn.Module):
         out = self.base_model.forward(image)
 
         if self.normalize:
-            out = F.normalize(out, dim=-1)
+            out = F.normalize(out, dim=1)
 
         return out.cpu().numpy()
 
@@ -51,8 +53,3 @@ class ImageEmbedder(nn.Module):
             embedding = F.normalize(embedding, dim=-1)
 
         return embedding
-
-
-if __name__ == '__main__':
-    model = ImageEmbedder('/Users/notness/contrastive_visual_embed/model/enet_b0_8_best_vgaf.pt')
-    print(model)
